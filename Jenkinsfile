@@ -7,6 +7,7 @@ pipeline {
         IMAGE_TAG    = "${BUILD_NUMBER}"
         REPORTS_DIR  = 'reports'
         PORT         = '5000'
+        PATH         = "C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313;C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313\\Scripts;C:\\Program Files\\Git\\cmd;C:\\Users\\lenovo\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;${env.PATH}"
     }
 
     options {
@@ -124,7 +125,7 @@ pipeline {
                         bat '''
                             call .venv\\Scripts\\activate.bat
                             if not exist "reports" ( mkdir reports )
-                            pytest -v --junitxml=reports/junit.xml
+                            python -m pytest -v --junitxml=reports/junit.xml
                         '''
                     }
                 }
@@ -171,9 +172,8 @@ pipeline {
         // ====================================================================
         stage('8. Deployment') {
             when {
-                // Ensure deployment only triggers if tests passed
-                allOf {
-                    branch pattern: '^(main|develop)$', comparator: 'REGEXP'
+                expression {
+                    return (env.GIT_BRANCH == null || env.GIT_BRANCH == '' || env.GIT_BRANCH == 'local' || env.GIT_BRANCH.contains('main') || env.GIT_BRANCH.contains('develop'))
                 }
             }
             steps {
