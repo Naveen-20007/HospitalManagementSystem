@@ -1,0 +1,101 @@
+---
+# ==============================================================================
+# CareSync — Automated Docker Container Management Using Ansible Playbook
+# Laboratory Experiment 12: Automated Docker Container Management
+# ==============================================================================
+- name: Automate CareSync Docker Container Deployment and Management
+  hosts: docker_hosts
+  become: true
+  vars:
+    app_image: caresync-app:latest
+    container_name: caresync-app
+    nginx_container: caresync-nginx
+    network_name: caresync-network
+    volume_name: caresync_persistent_db
+    host_port: 8080
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # 1. Docker Network & Volume Setup
+    # --------------------------------------------------------------------------
+    - name: Create dedicated Docker bridge network
+      community.docker.docker_network:
+        name: "{{ network_name }}"
+        driver: bridge
+        state: present
+
+    - name: Create persistent Docker volume for SQLite data
+      community.docker.docker_volume:
+        name: "{{ volume_name }}"
+        state: present
+
+    # --------------------------------------------------------------------------
+    # 2. Build or Update Application Image
+    # --------------------------------------------------------------------------
+    - name: Build CareSync production image from source
+      community.docker.docker_image:
+        name: "{{ app_image }}"
+        build:
+          path: ..
+          dockerfile: Dockerfile
+        source: build
+        state: present
+
+    # --------------------------------------------------------------------------
+    # 3. Deploy CareSync Backend Container
+    # --------------------------------------------------------------------------
+    - name: Run CareSync Flask application container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ app_image }}"
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ network_name }}"
+        volumes:
+          - "{{ volume_name }}:/app/data"
+        env:
+          FLASK_ENV: "production"
+          PORT: "5000"
+          DATABASE_PATH: "/app/data/caresync.db"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+          interval: 10s
+          timeout: 5s
+          retries: 3
+        exposed_ports:
+          - "5000"
+
+    # --------------------------------------------------------------------------
+    # 4. Deploy Nginx Reverse Proxy Container
+    # --------------------------------------------------------------------------
+    - name: Run Nginx reverse proxy container
+      community.docker.docker_container:
+        name: "{{ nginx_container }}"
+        image: nginx:alpine
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ network_name }}"
+        ports:
+          - "{{ host_port }}:80"
+        volumes:
+          - "../nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
+
+    # --------------------------------------------------------------------------
+    # 5. Verification & Health Monitoring
+    # --------------------------------------------------------------------------
+    - name: Wait for services to become healthy and verify endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ host_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: container_health
+      retries: 10
+      delay: 3
+      until: container_health.status == 200
+
+    - name: Report container status
+      ansible.builtin.debug:
+        msg: "Docker containers managed successfully via Ansible! Response: {{ container_health.json }}"

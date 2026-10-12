@@ -1,0 +1,181 @@
+---
+# ==============================================================================
+# CareSync — Ansible Web Server Configuration & Deployment Playbook
+# Laboratory Experiment 11: Idempotent Web Server & Application Automation
+# ==============================================================================
+- name: Configure Nginx Web Server and Deploy CareSync Hospital Service
+  hosts: webservers
+  become: true
+  vars:
+    app_name: caresync
+    app_deploy_dir: /var/www/caresync
+    app_user: www-data
+    app_group: www-data
+    app_port: 5000
+    http_port: 80
+    domain_name: localhost
+
+  tasks:
+    # --------------------------------------------------------------------------
+    # 1. Package Installation (Idempotent via apt)
+    # --------------------------------------------------------------------------
+    - name: Update apt cache and install required system packages
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - python3
+          - python3-pip
+          - python3-venv
+          - curl
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # --------------------------------------------------------------------------
+    # 2. Directory Structure & Permissions
+    # --------------------------------------------------------------------------
+    - name: Ensure CareSync deployment directory exists
+      ansible.builtin.file:
+        path: "{{ app_deploy_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    # --------------------------------------------------------------------------
+    # 3. Synchronize Application Files
+    # --------------------------------------------------------------------------
+    - name: Copy application source code to target server
+      ansible.builtin.copy:
+        src: ../app
+        dest: "{{ app_deploy_dir }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: Copy project requirements and entrypoint
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ app_deploy_dir }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+      loop:
+        - ../requirements.txt
+        - ../app.py
+
+    - name: Copy database seed and helper scripts
+      ansible.builtin.copy:
+        src: ../scripts
+        dest: "{{ app_deploy_dir }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    # --------------------------------------------------------------------------
+    # 4. Virtual Environment & Dependencies
+    # --------------------------------------------------------------------------
+    - name: Create Python virtual environment and install requirements
+      ansible.builtin.pip:
+        requirements: "{{ app_deploy_dir }}/requirements.txt"
+        virtualenv: "{{ app_deploy_dir }}/.venv"
+        virtualenv_command: python3 -m venv
+      notify: Restart CareSync
+
+    # --------------------------------------------------------------------------
+    # 5. Database Initialization
+    # --------------------------------------------------------------------------
+    - name: Initialize and seed demo database if not present
+      ansible.builtin.command:
+        cmd: "{{ app_deploy_dir }}/.venv/bin/python {{ app_deploy_dir }}/scripts/seed_data.py"
+        creates: "{{ app_deploy_dir }}/caresync.db"
+      become_user: "{{ app_user }}"
+
+    # --------------------------------------------------------------------------
+    # 6. Systemd Service Configuration
+    # --------------------------------------------------------------------------
+    - name: Deploy Systemd service unit for CareSync Gunicorn
+      ansible.builtin.template:
+        src: templates/caresync.service.j2
+        dest: /etc/systemd/system/caresync.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart CareSync
+
+    - name: Enable and start CareSync service
+      ansible.builtin.systemd:
+        name: caresync
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    # --------------------------------------------------------------------------
+    # 7. Nginx Reverse Proxy Configuration
+    # --------------------------------------------------------------------------
+    - name: Deploy CareSync Nginx virtual host configuration
+      ansible.builtin.template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/caresync
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload Nginx
+
+    - name: Enable CareSync site in Nginx
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/caresync
+        dest: /etc/nginx/sites-enabled/caresync
+        state: link
+      notify: Reload Nginx
+
+    - name: Remove default Nginx welcome page
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload Nginx
+
+    - name: Validate Nginx configuration syntax
+      ansible.builtin.command:
+        cmd: nginx -t
+      changed_when: false
+
+    # --------------------------------------------------------------------------
+    # 8. Post-Deployment Verification
+    # --------------------------------------------------------------------------
+    - name: Flush handlers to ensure services are reloaded before test
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify CareSync application health via HTTP GET
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ http_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_check
+      retries: 5
+      delay: 3
+      until: health_check.status == 200
+
+    - name: Display deployment verification status
+      ansible.builtin.debug:
+        msg: "CareSync successfully deployed and healthy! Response: {{ health_check.json }}"
+
+  # ----------------------------------------------------------------------------
+  # Handlers: Triggered only when configuration files change (Idempotent)
+  # ----------------------------------------------------------------------------
+  handlers:
+    - name: Restart CareSync
+      ansible.builtin.systemd:
+        name: caresync
+        state: restarted
+
+    - name: Reload Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Restart Nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted

@@ -1,0 +1,18 @@
+[Unit]
+Description=CareSync Hospital Appointment Management Gunicorn Service
+After=network.target
+
+[Service]
+User={{ app_user | default('www-data') }}
+Group={{ app_group | default('www-data') }}
+WorkingDirectory={{ app_deploy_dir | default('/var/www/caresync') }}
+Environment="PATH={{ app_deploy_dir | default('/var/www/caresync') }}/.venv/bin"
+Environment="PORT={{ app_port | default(5000) }}"
+Environment="DATABASE_PATH={{ app_deploy_dir | default('/var/www/caresync') }}/caresync.db"
+Environment="FLASK_ENV=production"
+ExecStart={{ app_deploy_dir | default('/var/www/caresync') }}/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:{{ app_port | default(5000) }} app:app
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

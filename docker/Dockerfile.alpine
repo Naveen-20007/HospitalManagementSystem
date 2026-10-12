@@ -1,0 +1,41 @@
+# ==============================================================================
+# CareSync - Lab Experiment 8: Operating System Image Comparison (Alpine Linux)
+# Used to demonstrate image layer sizes, package managers (apk vs apt), and base OS differences.
+# ==============================================================================
+FROM python:3.11-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=5000 \
+    DATABASE_PATH=/app/data/caresync.db
+
+WORKDIR /app
+
+# Alpine package manager (apk) vs Debian (apt)
+RUN apk update && \
+    apk add --no-cache curl build-base linux-headers && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user in Alpine
+RUN addgroup -S caresync && adduser -S caresync -G caresync
+
+# Setup application directories
+RUN mkdir -p /app/data && chown -R caresync:caresync /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ app/
+COPY scripts/ scripts/
+COPY app.py .
+COPY docker/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && chown -R caresync:caresync /app
+
+USER caresync
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app:app"]

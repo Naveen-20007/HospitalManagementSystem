@@ -1,0 +1,63 @@
+services:
+  # ============================================================================
+  # CareSync Backend Application Service (Flask + Gunicorn)
+  # ============================================================================
+  caresync-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: caresync-app:latest
+    container_name: caresync-app
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - PORT=5000
+      - SECRET_KEY=caresync-compose-secret-key-23it723
+      - DATABASE_PATH=/app/data/caresync.db
+    volumes:
+      - caresync_data:/app/data
+    networks:
+      - caresync-net
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ============================================================================
+  # Nginx Web Server & Reverse Proxy
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: caresync-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      caresync-app:
+        condition: service_healthy
+    networks:
+      - caresync-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ==============================================================================
+# Persistent Named Volumes & Network Definition
+# ==============================================================================
+volumes:
+  caresync_data:
+    name: caresync_persistent_db
+    driver: local
+
+networks:
+  caresync-net:
+    name: caresync-network
+    driver: bridge

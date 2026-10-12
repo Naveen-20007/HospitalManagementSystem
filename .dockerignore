@@ -1,0 +1,32 @@
+# Git repository
+.git
+.gitignore
+
+# Virtual environment
+.venv
+venv
+env
+ENV
+
+# Python bytecode and caches
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.coverage
+htmlcov
+
+# Local databases and logs
+*.db
+*.sqlite3
+instance/*.db
+*.log
+
+# Test reports
+reports/*.xml
+
+# IDE and OS artifacts
+.vscode
+.idea
+.DS_Store
+Thumbs.db

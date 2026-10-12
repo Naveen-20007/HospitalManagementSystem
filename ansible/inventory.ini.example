@@ -1,0 +1,24 @@
+# ==============================================================================
+# CareSync Ansible Inventory Example
+# Copy to inventory.ini and customize host IP addresses and SSH keys
+# ==============================================================================
+
+[webservers]
+# Production and Staging Linux targets (Ubuntu / Debian)
+prod-web-01 ansible_host=192.168.1.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/caresync_key.pem
+staging-web-01 ansible_host=192.168.1.101 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/caresync_key.pem
+
+[docker_hosts]
+# Linux servers running Docker daemon for containerized deployments
+docker-node-01 ansible_host=192.168.1.100 ansible_user=ubuntu
+
+[local]
+# Local testing inside WSL2 or Linux VM
+localhost ansible_connection=local ansible_python_interpreter=/usr/bin/python3
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+app_name=caresync
+app_port=5000
+http_port=80
+domain_name=caresync.hospital
