@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Queue Management Console — CareSync{% endblock %}
+{% block page_header %}Reception Desk & Queue Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Left Column: Patient Check-In for Today -->
+  <div class="col-lg-5">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-person-check-fill text-primary"></i> Patient Arrival Check-In</h3>
+        <span class="badge bg-light text-dark border">{{ unregistered_appointments|length }} Waiting Check-In</span>
+      </div>
+      <div class="card-body-custom p-0">
+        {% if unregistered_appointments %}
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in unregistered_appointments %}
+              <tr>
+                <td class="fw-bold">{{ a.time_slot }}</td>
+                <td>
+                  <div class="fw-semibold">{{ a.patient_name }}</div>
+                  <small class="text-muted">{{ a.appointment_code }}</small>
+                </td>
+                <td>
+                  <div class="small fw-semibold">{{ a.doctor_name }}</div>
+                  <small class="text-muted">{{ a.doctor_specialty }}</small>
+                </td>
+                <td>
+                  <form method="POST" action="{{ url_for('queue.checkin', appointment_id=a.id) }}">
+                    <button type="submit" class="btn-teal-custom btn-sm">
+                      <i class="bi bi-box-arrow-in-right"></i> Check In
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted small">
+          <i class="bi bi-check-circle fs-2 text-success d-block mb-2"></i>
+          All scheduled patients for today are checked in or no more pending arrivals.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Active Queue Tokens & Progression -->
+  <div class="col-lg-7">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-list-ol text-teal"></i> Today's Active Queue Roster</h3>
+        <a href="{{ url_for('queue.display') }}" target="_blank" class="btn btn-sm btn-outline-primary">Open Public Screen</a>
+      </div>
+      <div class="card-body-custom p-0">
+        {% if queue_entries %}
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Patient</th>
+                <th>Doctor / Room</th>
+                <th>Current Status</th>
+                <th>Change Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for q in queue_entries %}
+              <tr>
+                <td>
+                  <span class="badge bg-primary fs-6 px-2 py-1">#{{ q.queue_number }}</span>
+                </td>
+                <td>
+                  <div class="fw-bold">{{ q.patient_name }}</div>
+                  <small class="text-muted">{{ q.appointment_code }} &bull; Slot: {{ q.time_slot }}</small>
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ q.doctor_name }}</div>
+                  <small class="text-muted">Room: {{ q.doctor_code }}</small>
+                </td>
+                <td>
+                  {% if q.status == 'In Consultation' %}
+                    <span class="custom-badge badge-inconsultation">In Consultation</span>
+                  {% elif q.status == 'Waiting' %}
+                    <span class="custom-badge badge-waiting">Waiting</span>
+                  {% elif q.status == 'Completed' %}
+                    <span class="custom-badge badge-completed">Completed</span>
+                  {% elif q.status == 'Skipped' %}
+                    <span class="custom-badge badge-cancelled">Skipped</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    {% if q.status == 'Waiting' %}
+                    <form method="POST" action="{{ url_for('queue.update_status', queue_id=q.id) }}">
+                      <input type="hidden" name="status" value="In Consultation">
+                      <button type="submit" class="btn btn-sm btn-primary py-1 px-2" title="Call patient into room">
+                        <i class="bi bi-megaphone"></i> Call
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {% if q.status == 'In Consultation' %}
+                    <form method="POST" action="{{ url_for('queue.update_status', queue_id=q.id) }}">
+                      <input type="hidden" name="status" value="Completed">
+                      <button type="submit" class="btn btn-sm btn-success py-1 px-2" title="Mark consultation completed">
+                        <i class="bi bi-check-lg"></i> Done
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {% if q.status in ['Waiting', 'In Consultation'] %}
+                    <form method="POST" action="{{ url_for('queue.update_status', queue_id=q.id) }}">
+                      <input type="hidden" name="status" value="Skipped">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Skip patient">
+                        Skip
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted small">
+          No patients currently waiting or in consultation. Check in arriving patients on the left.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

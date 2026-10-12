@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Registration — CareSync Hospital{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="col-md-7 col-lg-6">
+    <div class="content-card p-4 p-md-5">
+      <div class="text-center mb-4">
+        <div class="brand-icon mx-auto mb-3" style="width: 50px; height: 50px; font-size: 1.5rem;">
+          <i class="bi bi-person-plus-fill"></i>
+        </div>
+        <h2 class="fw-bold mb-1">Create Patient Account</h2>
+        <p class="text-muted small">Register to book and track doctor consultations online</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.register') }}" id="registerForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="full_name" class="form-label-custom">Full Name *</label>
+            <input type="text" class="form-control-custom" id="full_name" name="full_name" required placeholder="e.g. John Doe">
+          </div>
+          <div class="col-md-6">
+            <label for="username" class="form-label-custom">Username *</label>
+            <input type="text" class="form-control-custom" id="username" name="username" required placeholder="e.g. jdoe24">
+          </div>
+          <div class="col-md-6">
+            <label for="email" class="form-label-custom">Email Address *</label>
+            <input type="email" class="form-control-custom" id="email" name="email" required placeholder="name@example.com">
+          </div>
+          <div class="col-md-6">
+            <label for="phone" class="form-label-custom">Phone Number</label>
+            <input type="text" class="form-control-custom" id="phone" name="phone" placeholder="+1-555-0199">
+          </div>
+          <div class="col-md-6">
+            <label for="password" class="form-label-custom">Password (min 6 chars) *</label>
+            <input type="password" class="form-control-custom" id="password" name="password" minlength="6" required placeholder="••••••••">
+          </div>
+          <div class="col-md-6">
+            <label for="confirm_password" class="form-label-custom">Confirm Password *</label>
+            <input type="password" class="form-control-custom" id="confirm_password" name="confirm_password" minlength="6" required placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary-custom w-100 justify-content-center py-2 mt-4" id="btn-register-submit">
+          <i class="bi bi-check-circle"></i>
+          <span>Complete Registration</span>
+        </button>
+      </form>
+
+      <div class="text-center mt-4">
+        <span class="text-muted small">Already have an account?</span>
+        <a href="{{ url_for('auth.login') }}" class="small text-primary fw-semibold text-decoration-none ms-1">Sign in here</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

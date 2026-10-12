@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Book Appointment — CareSync Hospital{% endblock %}
+{% block page_header %}Schedule Doctor Consultation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-calendar-plus text-primary"></i> Doctor Appointment Booking</h3>
+        <span class="badge bg-primary-subtle text-primary border">Direct Hospital Portal</span>
+      </div>
+      <div class="card-body-custom">
+        <form method="POST" action="{{ url_for('appointments.book') }}" id="appointmentBookingForm">
+          <!-- Hidden input for selected slot filled by JavaScript -->
+          <input type="hidden" name="time_slot" id="selectedTimeSlot" required>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="bookingDoctorSelect" class="form-label-custom">Select Doctor & Specialty *</label>
+              <select class="form-select-custom" id="bookingDoctorSelect" name="doctor_id" required>
+                <option value="">-- Choose a Doctor --</option>
+                {% for d in doctors %}
+                <option value="{{ d.id }}" {% if selected_doctor == d.id %}selected{% endif %}>
+                  {{ d.full_name }} — {{ d.specialty }} (Fee: ₹{{ "%.0f"|format(d.consultation_fee) }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="bookingDateInput" class="form-label-custom">Consultation Date *</label>
+              <input type="date" class="form-control-custom" id="bookingDateInput" name="appointment_date" min="{{ today }}" value="{{ selected_date }}" required>
+            </div>
+          </div>
+
+          <!-- Dynamic Slots Grid Container -->
+          <div class="mb-4">
+            <label class="form-label-custom d-flex justify-content-between align-items-center">
+              <span>Select Available Time Slot *</span>
+              <small class="text-muted fw-normal">Click a time slot to select</small>
+            </label>
+            <div id="slotsContainer" class="p-3 bg-light rounded border min-vh-25">
+              <p class="text-muted small mb-0">Select a doctor and date to load available time slots.</p>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="reason" class="form-label-custom">Reason for Visit / Symptoms *</label>
+            <textarea class="form-control-custom" id="reason" name="reason" rows="3" required placeholder="Please describe your symptoms, concern, or medical reason for consultation..."></textarea>
+          </div>
+
+          <div class="p-3 bg-light-subtle rounded border mb-4 small text-muted">
+            <i class="bi bi-shield-check text-success me-1"></i>
+            CareSync automatically validates doctor availability and prevents double booking in real-time.
+            Upon confirmation, an appointment reference code and clinic token will be generated.
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('appointments.index') }}" class="btn-outline-custom">Back</a>
+            <button type="submit" class="btn-primary-custom px-4 py-2" id="btn-confirm-booking">
+              <i class="bi bi-check2-circle"></i> Confirm & Book Appointment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

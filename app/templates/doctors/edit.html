@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Doctor — {{ doctor.full_name }} — CareSync{% endblock %}
+{% block page_header %}Edit Doctor & Working Schedule{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="content-card p-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-pencil-square text-primary"></i> Edit Profile: {{ doctor.full_name }}</h4>
+      <form method="POST" action="{{ url_for('doctors.edit', doctor_id=doctor.id) }}">
+        <div class="mb-3">
+          <label class="form-label-custom">Specialty</label>
+          <input type="text" class="form-control-custom" name="specialty" value="{{ doctor.specialty }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label-custom">Qualification</label>
+          <input type="text" class="form-control-custom" name="qualification" value="{{ doctor.qualification }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label-custom">Department</label>
+          <input type="text" class="form-control-custom" name="department" value="{{ doctor.department }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label-custom">Consultation Fee (₹)</label>
+          <input type="number" step="50" class="form-control-custom" name="consultation_fee" value="{{ doctor.consultation_fee }}" required>
+        </div>
+        <div class="form-check form-switch mb-4">
+          <input class="form-check-input" type="checkbox" name="is_available" id="is_available" {% if doctor.is_available %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="is_available">Available for Bookings</label>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <a href="{{ url_for('doctors.manage') }}" class="btn-outline-custom">Cancel</a>
+          <button type="submit" class="btn-primary-custom">Update Doctor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="content-card p-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-calendar-range text-teal"></i> Set Day-wise Working Schedule</h4>
+      <form method="POST" action="{{ url_for('doctors.update_schedule', doctor_id=doctor.id) }}" class="p-3 bg-light rounded border mb-4">
+        <h6 class="fw-bold mb-2">Add / Update Shift Hours</h6>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label-custom small">Day</label>
+            <select class="form-select-custom" name="day_of_week">
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-custom small">Start Time</label>
+            <input type="time" class="form-control-custom" name="start_time" value="09:00" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label-custom small">End Time</label>
+            <input type="time" class="form-control-custom" name="end_time" value="17:00" required>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn-teal-custom w-100 justify-content-center">Save Shift</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Hours</th>
+              <th>Slot Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for av in availability %}
+            <tr>
+              <td class="fw-bold">{{ av.day_of_week }}</td>
+              <td>{{ av.start_time }} &mdash; {{ av.end_time }}</td>
+              <td>{{ av.slot_duration_mins }} mins</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center py-3 text-muted">No custom shift hours saved.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

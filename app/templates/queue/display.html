@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Live Hospital Queue Monitor — CareSync{% endblock %}
+{% block page_header %}Waiting Area Queue Board{% endblock %}
+
+{% block content %}
+<div id="liveQueueBoard">
+  <!-- Queue Monitor Board Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="fw-bold text-dark mb-0"><i class="bi bi-display text-primary me-2"></i> Patient Queue Display</h4>
+      <div class="text-muted small" id="queueLastUpdated">Last updated: Just now</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge bg-success-subtle text-success p-2 d-flex align-items-center gap-1">
+        <span class="spinner-grow spinner-grow-sm text-success" role="status" style="width: 0.6rem; height: 0.6rem;"></span> Live Monitor
+      </span>
+      <button onclick="location.reload()" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Hero Section: Currently Serving / In Consultation -->
+  <div class="queue-display-container">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <h3 class="fw-bold mb-0 text-white"><i class="bi bi-megaphone-fill text-warning me-2"></i> Now In Consultation</h3>
+      <span class="badge bg-white text-dark">{{ in_consultation|length }} Room(s) Active</span>
+    </div>
+
+    <div class="row" id="activeConsultationsList">
+      {% if in_consultation %}
+        {% for c in in_consultation %}
+        <div class="col-md-6 mb-3">
+          <div class="queue-hero-token">
+            <div class="small text-uppercase text-light mb-1">Room: {{ c.doctor_code or 'OPD' }}</div>
+            <div class="token-big">#{{ c.queue_number }}</div>
+            <div class="h5 mt-2 mb-0 text-white">{{ c.patient_name }}</div>
+            <div class="small text-info">{{ c.doctor_name }} ({{ c.specialty }})</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-12">
+          <div class="p-4 text-center text-muted bg-white bg-opacity-10 rounded">
+            No consultations currently in progress.
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Waiting List Section -->
+    <div class="mt-5 pt-3 border-top border-secondary">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-white mb-0"><i class="bi bi-hourglass-split text-info me-2"></i> Waiting In Lobby</h5>
+        <span class="badge bg-info-subtle text-info">{{ waiting|length }} Patient(s) In Queue</span>
+      </div>
+
+      <div class="queue-waiting-grid" id="waitingTokensList">
+        {% if waiting %}
+          {% for w in waiting %}
+          <div class="queue-token-pill">
+            <div class="token-num">#{{ w.queue_number }}</div>
+            <div class="small text-white fw-bold text-truncate">{{ w.patient_name }}</div>
+            <div class="text-muted" style="font-size: 0.7rem">{{ w.doctor_name }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-white-50 small p-3">Waiting queue is currently clear.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Completed Tokens summary -->
+  <div class="content-card p-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="fw-semibold small"><i class="bi bi-check-all text-success me-1"></i> Completed Consultations Today:</div>
+      <div class="badge bg-success fs-6">{{ completed|length }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/queue.js') }}"></script>
+{% endblock %}

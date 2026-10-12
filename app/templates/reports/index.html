@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Hospital Analytics & Reports — CareSync{% endblock %}
+{% block page_header %}Hospital Analytics & Workload Reports{% endblock %}
+
+{% block content %}
+<!-- Date Range Filter Form -->
+<div class="content-card p-3 mb-4">
+  <form method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label-custom small">From Date</label>
+      <input type="date" class="form-control-custom" name="start_date" value="{{ start_date }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label-custom small">To Date</label>
+      <input type="date" class="form-control-custom" name="end_date" value="{{ end_date }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label-custom small">Doctor Filter</label>
+      <select class="form-select-custom" name="doctor_id">
+        <option value="">All Doctors</option>
+        {% for d in doctors %}
+        <option value="{{ d.id }}" {% if selected_doctor == d.id %}selected{% endif %}>
+          {{ d.full_name }} ({{ d.specialty }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn-primary-custom w-100 justify-content-center">Generate</button>
+      <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm" title="Print Report">
+        <i class="bi bi-printer"></i>
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Summary Metrics Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Total Appointments</div>
+      <div class="stat-value">{{ report.total_appointments }}</div>
+    </div>
+    <div class="stat-icon icon-blue"><i class="bi bi-calendar2-range"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Completed Consults</div>
+      <div class="stat-value text-success">{{ report.status_counts.get('Completed', 0) }}</div>
+    </div>
+    <div class="stat-icon icon-green"><i class="bi bi-check2-circle"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Cancelled Visits</div>
+      <div class="stat-value text-danger">{{ report.status_counts.get('Cancelled', 0) }}</div>
+    </div>
+    <div class="stat-icon icon-red"><i class="bi bi-x-circle"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Active / Confirmed</div>
+      <div class="stat-value text-primary">{{ report.status_counts.get('Confirmed', 0) }}</div>
+    </div>
+    <div class="stat-icon icon-teal"><i class="bi bi-hourglass"></i></div>
+  </div>
+</div>
+
+<!-- Doctor Workload Breakdown -->
+<div class="content-card">
+  <div class="card-header-flex">
+    <h3><i class="bi bi-bar-chart-line text-primary"></i> Doctor Workload & Consultations Breakdown</h3>
+    <span class="badge bg-light text-dark border">{{ start_date }} to {{ end_date }}</span>
+  </div>
+  <div class="table-responsive">
+    {% if report.doctor_workload %}
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Doctor</th>
+          <th>Specialty</th>
+          <th>Total Bookings</th>
+          <th>Completed Consults</th>
+          <th>Cancellations</th>
+          <th>Completion Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in report.doctor_workload %}
+        <tr>
+          <td class="fw-bold">{{ doc.doctor_name }}</td>
+          <td><span class="badge bg-info-subtle text-info border">{{ doc.specialty }}</span></td>
+          <td class="fw-bold">{{ doc.total_appointments }}</td>
+          <td class="text-success fw-bold">{{ doc.completed_count }}</td>
+          <td class="text-danger fw-bold">{{ doc.cancelled_count }}</td>
+          <td>
+            {% set rate = (doc.completed_count / doc.total_appointments * 100) if doc.total_appointments > 0 else 0 %}
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height: 6px;">
+                <div class="progress-bar bg-success" role="progressbar" style="width: {{ "%.0f"|format(rate) }}%"></div>
+              </div>
+              <span class="small fw-semibold">{{ "%.0f"|format(rate) }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-4 text-center text-muted">No workload data recorded for this date range.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

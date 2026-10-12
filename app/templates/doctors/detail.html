@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Profile — {{ doctor.full_name }} — CareSync{% endblock %}
+{% block page_header %}Doctor Profile & Working Schedule{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="content-card p-4 text-center">
+      <div class="avatar-badge mx-auto mb-3" style="width: 72px; height: 72px; font-size: 2rem;">
+        {{ doctor.full_name[:2].upper() }}
+      </div>
+      <h4 class="fw-bold mb-1">{{ doctor.full_name }}</h4>
+      <span class="badge bg-primary-subtle text-primary border mb-2">{{ doctor.specialty }}</span>
+      <p class="text-muted small mb-3">{{ doctor.qualification }}</p>
+
+      <div class="border-top pt-3 text-start small">
+        <div class="mb-2"><strong>Doctor Code:</strong> <span class="float-end">{{ doctor.doctor_code }}</span></div>
+        <div class="mb-2"><strong>Department:</strong> <span class="float-end">{{ doctor.department }}</span></div>
+        <div class="mb-2"><strong>Email:</strong> <span class="float-end">{{ doctor.email }}</span></div>
+        <div class="mb-2"><strong>Phone:</strong> <span class="float-end">{{ doctor.phone or 'N/A' }}</span></div>
+        <div class="mb-3"><strong>Consultation Fee:</strong> <span class="float-end text-success fw-bold">₹{{ "%.2f"|format(doctor.consultation_fee) }}</span></div>
+      </div>
+
+      {% if doctor.is_available %}
+      <a href="{{ url_for('appointments.book', doctor_id=doctor.id) }}" class="btn-primary-custom w-100 justify-content-center">
+        <i class="bi bi-calendar-plus"></i> Book Appointment Now
+      </a>
+      {% else %}
+      <div class="alert alert-secondary small mb-0">Doctor currently unavailable for new bookings.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-clock-history text-primary"></i> Consultation Working Hours</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Day of Week</th>
+              <th>Working Hours</th>
+              <th>Slot Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for av in availability %}
+            <tr>
+              <td class="fw-bold">{{ av.day_of_week }}</td>
+              <td><i class="bi bi-clock me-1 text-muted"></i>{{ av.start_time }} &mdash; {{ av.end_time }}</td>
+              <td>{{ av.slot_duration_mins }} mins</td>
+              <td><span class="badge bg-success-subtle text-success">Active Schedule</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                Standard schedule active: Monday to Saturday (09:00 - 17:00, 30 min slots).
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

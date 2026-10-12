@@ -1,0 +1,3 @@
+"""
+CareSync Route Blueprints Initialization
+"""

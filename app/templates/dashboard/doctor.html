@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Portal — {{ doctor.full_name }} — CareSync{% endblock %}
+{% block page_header %}Doctor Clinical Workspace{% endblock %}
+
+{% block content %}
+<!-- Doctor Profile Hero Card -->
+<div class="content-card p-4 mb-4" style="background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%); border-color: #bfdbfe;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="avatar-badge" style="width: 58px; height: 58px; font-size: 1.5rem; background: var(--primary); color: white;">
+        {{ doctor.full_name[:2].upper() }}
+      </div>
+      <div>
+        <h3 class="fw-bold mb-1">{{ doctor.full_name }}</h3>
+        <div class="text-primary fw-semibold small mb-1">
+          <i class="bi bi-heart-pulse-fill me-1"></i> {{ doctor.specialty }} &bull; {{ doctor.qualification }}
+        </div>
+        <div class="text-muted small">
+          Room/Code: <strong>{{ doctor.doctor_code }}</strong> &bull; Department: {{ doctor.department }} &bull; Fee: ₹{{ "%.2f"|format(doctor.consultation_fee) }}
+        </div>
+      </div>
+    </div>
+    <div>
+      <a href="{{ url_for('queue.manage') }}" class="btn-teal-custom">
+        <i class="bi bi-list-check"></i> Open Queue Console
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Doctor Metrics -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Total Assigned</div>
+      <div class="stat-value">{{ stats.total_assigned }}</div>
+    </div>
+    <div class="stat-icon icon-blue"><i class="bi bi-folder2-open"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Today's Total</div>
+      <div class="stat-value">{{ stats.today_total }}</div>
+    </div>
+    <div class="stat-icon icon-teal"><i class="bi bi-calendar-day"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Waiting in Room</div>
+      <div class="stat-value text-warning">{{ stats.today_waiting }}</div>
+    </div>
+    <div class="stat-icon icon-amber"><i class="bi bi-hourglass-split"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Completed Today</div>
+      <div class="stat-value text-success">{{ stats.today_completed }}</div>
+    </div>
+    <div class="stat-icon icon-green"><i class="bi bi-check-circle"></i></div>
+  </div>
+</div>
+
+<!-- Today's Consultations -->
+<div class="content-card">
+  <div class="card-header-flex">
+    <h3><i class="bi bi-clock text-primary"></i> Consultations Schedule for Today ({{ today }})</h3>
+    <span class="badge bg-light text-dark border">{{ today_appointments|length }} Patients</span>
+  </div>
+  <div class="table-responsive">
+    {% if today_appointments %}
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Token #</th>
+          <th>Patient Name</th>
+          <th>Chief Complaint / Reason</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in today_appointments %}
+        <tr>
+          <td class="fw-bold"><span class="badge bg-light text-primary border">{{ a.time_slot }}</span></td>
+          <td>
+            {% if a.queue_number %}
+              <span class="badge bg-primary fs-6">#{{ a.queue_number }}</span>
+            {% else %}
+              <span class="text-muted small">Not arrived</span>
+            {% endif %}
+          </td>
+          <td class="fw-semibold">
+            {{ a.patient_name }}
+            <div class="small text-muted">{{ a.patient_phone or '' }}</div>
+          </td>
+          <td>{{ a.reason }}</td>
+          <td>
+            {% if a.status == 'Confirmed' %}
+              <span class="custom-badge badge-confirmed">Confirmed</span>
+            {% elif a.status == 'Checked In' %}
+              <span class="custom-badge badge-checkedin">Waiting</span>
+            {% elif a.status == 'Completed' %}
+              <span class="custom-badge badge-completed">Completed</span>
+            {% elif a.status == 'Cancelled' %}
+              <span class="custom-badge badge-cancelled">Cancelled</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('appointments.detail', appointment_id=a.id) }}" class="btn btn-sm btn-light border">Details</a>
+              {% if a.status != 'Completed' and a.status != 'Cancelled' %}
+              <form method="POST" action="{{ url_for('appointments.update_status', appointment_id=a.id) }}">
+                <input type="hidden" name="status" value="Completed">
+                <button type="submit" class="btn btn-sm btn-success">
+                  <i class="bi bi-check2"></i> Mark Done
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-calendar-check fs-1 text-light d-block mb-2"></i>
+      No appointments scheduled for today.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

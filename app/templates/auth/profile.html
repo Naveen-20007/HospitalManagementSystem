@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile — CareSync Hospital{% endblock %}
+{% block page_header %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-person-circle text-primary"></i> Account Profile</h3>
+        <span class="custom-badge badge-confirmed text-uppercase">{{ user.role }}</span>
+      </div>
+      <div class="card-body-custom">
+        <form method="POST" action="{{ url_for('auth.profile') }}">
+          <div class="mb-3">
+            <label class="form-label-custom">Username</label>
+            <input type="text" class="form-control-custom bg-light" value="{{ user.username }}" readonly>
+            <div class="form-text small">Username cannot be changed.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-custom">Email Address</label>
+            <input type="email" class="form-control-custom bg-light" value="{{ user.email }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="full_name" class="form-label-custom">Full Name</label>
+            <input type="text" class="form-control-custom" id="full_name" name="full_name" value="{{ user.full_name }}" required>
+          </div>
+          <div class="mb-4">
+            <label for="phone" class="form-label-custom">Phone Number</label>
+            <input type="text" class="form-control-custom" id="phone" name="phone" value="{{ user.phone or '' }}">
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('dashboard.index') }}" class="btn-outline-custom">Back</a>
+            <button type="submit" class="btn-primary-custom">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

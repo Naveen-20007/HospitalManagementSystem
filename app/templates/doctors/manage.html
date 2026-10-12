@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Doctors — Admin — CareSync{% endblock %}
+{% block page_header %}Doctor Account & Faculty Administration{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Create New Doctor Form -->
+  <div class="col-lg-4">
+    <div class="content-card p-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-person-plus-fill text-primary"></i> Add New Doctor</h4>
+      <form method="POST" action="{{ url_for('doctors.manage') }}">
+        <div class="mb-2">
+          <label class="form-label-custom">Doctor Full Name *</label>
+          <input type="text" class="form-control-custom" name="full_name" required placeholder="e.g. Dr. Alex Vance">
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label-custom">Username *</label>
+            <input type="text" class="form-control-custom" name="username" required placeholder="dr.alex">
+          </div>
+          <div class="col-6">
+            <label class="form-label-custom">Doctor ID Code *</label>
+            <input type="text" class="form-control-custom" name="doctor_code" required placeholder="DOC-105">
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label-custom">Email Address *</label>
+          <input type="email" class="form-control-custom" name="email" required placeholder="alex@caresync.hospital">
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label-custom">Specialty *</label>
+            <input type="text" class="form-control-custom" name="specialty" required placeholder="Dermatology">
+          </div>
+          <div class="col-6">
+            <label class="form-label-custom">Department</label>
+            <input type="text" class="form-control-custom" name="department" value="Outpatient">
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label-custom">Qualification</label>
+          <input type="text" class="form-control-custom" name="qualification" placeholder="MD, DNB (Dermatology)">
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label-custom">Consult Fee (₹)</label>
+            <input type="number" class="form-control-custom" name="consultation_fee" value="500">
+          </div>
+          <div class="col-6">
+            <label class="form-label-custom">Phone</label>
+            <input type="text" class="form-control-custom" name="phone" placeholder="+1-555-0100">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary-custom w-100 justify-content-center">
+          <i class="bi bi-plus-circle"></i> Create Doctor Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Existing Doctors Table -->
+  <div class="col-lg-8">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <h3><i class="bi bi-people-fill text-teal"></i> Hospital Doctors Directory</h3>
+        <span class="badge bg-light text-dark border">{{ doctors|length }} Total</span>
+      </div>
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Doctor</th>
+              <th>Specialty</th>
+              <th>Department</th>
+              <th>Fee</th>
+              <th>Availability</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in doctors %}
+            <tr>
+              <td>
+                <div class="fw-bold">{{ d.full_name }}</div>
+                <small class="text-muted">{{ d.doctor_code }} &bull; {{ d.email }}</small>
+              </td>
+              <td><span class="badge bg-info-subtle text-info border">{{ d.specialty }}</span></td>
+              <td>{{ d.department }}</td>
+              <td>₹{{ "%.2f"|format(d.consultation_fee) }}</td>
+              <td>
+                {% if d.is_available %}
+                  <span class="badge bg-success-subtle text-success">Active</span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="{{ url_for('doctors.edit', doctor_id=d.id) }}" class="btn btn-sm btn-light border" title="Edit Doctor Profile">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <a href="{{ url_for('doctors.detail', doctor_id=d.id) }}" class="btn btn-sm btn-light border" title="View Schedule">
+                    <i class="bi bi-calendar3"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

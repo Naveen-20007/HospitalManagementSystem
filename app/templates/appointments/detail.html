@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Details — {{ appointment.appointment_code }} — CareSync{% endblock %}
+{% block page_header %}Appointment Details & Receipt{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="content-card">
+      <div class="card-header-flex">
+        <div>
+          <h3 class="mb-0"><i class="bi bi-receipt text-primary"></i> Confirmation Receipt</h3>
+          <small class="text-muted">Appointment Ref: <strong>{{ appointment.appointment_code }}</strong></small>
+        </div>
+        <div>
+          {% if appointment.status == 'Confirmed' %}
+            <span class="custom-badge badge-confirmed fs-6">Confirmed</span>
+          {% elif appointment.status == 'Checked In' %}
+            <span class="custom-badge badge-checkedin fs-6">Checked In</span>
+          {% elif appointment.status == 'Completed' %}
+            <span class="custom-badge badge-completed fs-6">Completed</span>
+          {% elif appointment.status == 'Cancelled' %}
+            <span class="custom-badge badge-cancelled fs-6">Cancelled</span>
+          {% else %}
+            <span class="custom-badge badge-pending fs-6">{{ appointment.status }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-body-custom">
+        <!-- Token Hero if Checked In -->
+        {% if appointment.queue_number %}
+        <div class="p-3 mb-4 rounded bg-primary-subtle border border-primary text-center">
+          <div class="text-uppercase small text-primary fw-bold">Live Hospital Queue Token</div>
+          <div class="display-4 fw-bold text-primary">#{{ appointment.queue_number }}</div>
+          <div class="small text-muted">Please proceed to Room <strong>{{ appointment.doctor_code }}</strong> when your token is called.</div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4 mb-4">
+          <!-- Patient Details -->
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border h-100">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-person text-primary"></i> Patient Information</h6>
+              <div class="mb-2"><span class="text-muted small">Name:</span> <strong class="d-block">{{ appointment.patient_name }}</strong></div>
+              <div class="mb-2"><span class="text-muted small">Email:</span> <div class="text-dark">{{ appointment.patient_email }}</div></div>
+              <div class="mb-0"><span class="text-muted small">Contact:</span> <div class="text-dark">{{ appointment.patient_phone or 'N/A' }}</div></div>
+            </div>
+          </div>
+
+          <!-- Doctor & Clinic Details -->
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border h-100">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-3"><i class="bi bi-heart-pulse text-teal"></i> Doctor & Department</h6>
+              <div class="mb-2"><span class="text-muted small">Doctor:</span> <strong class="d-block">{{ appointment.doctor_name }}</strong></div>
+              <div class="mb-2"><span class="text-muted small">Specialty:</span> <div class="text-dark">{{ appointment.doctor_specialty }} ({{ appointment.doctor_code }})</div></div>
+              <div class="mb-0"><span class="text-muted small">Department:</span> <div class="text-dark">{{ appointment.department }}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-light rounded border mb-4">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <span class="text-muted small d-block">Consultation Date</span>
+              <strong class="fs-6"><i class="bi bi-calendar3 me-1 text-primary"></i>{{ appointment.appointment_date }}</strong>
+            </div>
+            <div class="col-sm-4">
+              <span class="text-muted small d-block">Time Slot</span>
+              <strong class="fs-6"><i class="bi bi-clock me-1 text-primary"></i>{{ appointment.time_slot }}</strong>
+            </div>
+            <div class="col-sm-4">
+              <span class="text-muted small d-block">Consultation Fee</span>
+              <strong class="fs-6 text-success">₹{{ "%.2f"|format(appointment.consultation_fee) }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <h6 class="fw-bold text-dark mb-2">Reason for Visit / Symptoms:</h6>
+          <div class="p-3 bg-white border rounded">
+            {{ appointment.reason }}
+          </div>
+        </div>
+
+        {% if appointment.notes %}
+        <div class="mb-4">
+          <h6 class="fw-bold text-dark mb-2">Clinical Notes:</h6>
+          <div class="p-3 bg-white border rounded text-muted">
+            {{ appointment.notes }}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+          <a href="{{ url_for('appointments.index') }}" class="btn-outline-custom">
+            <i class="bi bi-arrow-left"></i> Back to Appointments
+          </a>
+
+          <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+              <i class="bi bi-printer"></i> Print
+            </button>
+
+            {% if current_user.role in ['admin', 'doctor'] and appointment.status == 'Confirmed' %}
+            <form method="POST" action="{{ url_for('queue.checkin', appointment_id=appointment.id) }}">
+              <button type="submit" class="btn-teal-custom">
+                <i class="bi bi-box-arrow-in-right"></i> Check In Patient
+              </button>
+            </form>
+            {% endif %}
+
+            {% if appointment.status != 'Cancelled' and appointment.status != 'Completed' %}
+            <form method="POST" action="{{ url_for('appointments.cancel', appointment_id=appointment.id) }}">
+              <button type="submit" class="btn-danger-custom confirm-action" data-confirm="Are you sure you want to cancel this appointment?">
+                Cancel Appointment
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

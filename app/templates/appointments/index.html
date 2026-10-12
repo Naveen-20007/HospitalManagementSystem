@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Appointments Directory — CareSync Hospital{% endblock %}
+{% block page_header %}Appointments & Consultations{% endblock %}
+
+{% block content %}
+<!-- Search and Filter Bar -->
+<div class="content-card p-3 mb-4">
+  <form method="GET" action="{{ url_for('appointments.index') }}" class="row g-2 align-items-center">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" class="form-control-custom" name="search" placeholder="Search by code, patient, or doctor..." value="{{ search }}">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select class="form-select-custom" name="status" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+        <option value="Checked In" {% if status_filter == 'Checked In' %}selected{% endif %}>Checked In</option>
+        <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <input type="date" class="form-control-custom" name="date" value="{{ date_filter }}" onchange="this.form.submit()">
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button type="submit" class="btn-primary-custom w-100 justify-content-center">Filter</button>
+      {% if search or status_filter or date_filter %}
+      <a href="{{ url_for('appointments.index') }}" class="btn-outline-custom">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Appointments Table Card -->
+<div class="content-card">
+  <div class="card-header-flex">
+    <h3><i class="bi bi-calendar-event text-primary"></i> Scheduled Consultations</h3>
+    <a href="{{ url_for('appointments.book') }}" class="btn-primary-custom btn-sm">
+      <i class="bi bi-plus-lg"></i> Book Appointment
+    </a>
+  </div>
+  <div class="table-responsive">
+    {% if appointments %}
+    <table class="custom-table searchable-table">
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Date & Time</th>
+          <th>Patient</th>
+          <th>Doctor & Specialty</th>
+          <th>Queue Token</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td class="fw-bold text-primary">{{ a.appointment_code }}</td>
+          <td>
+            <div class="fw-semibold">{{ a.appointment_date }}</div>
+            <span class="badge bg-light text-dark border">{{ a.time_slot }}</span>
+          </td>
+          <td>
+            <div class="fw-semibold">{{ a.patient_name }}</div>
+            <small class="text-muted">{{ a.patient_phone or '' }}</small>
+          </td>
+          <td>
+            <div class="fw-semibold">{{ a.doctor_name }}</div>
+            <small class="text-muted">{{ a.doctor_specialty }} ({{ a.doctor_code }})</small>
+          </td>
+          <td>
+            {% if a.queue_number %}
+              <span class="badge bg-primary fs-6">#{{ a.queue_number }}</span>
+            {% else %}
+              <span class="text-muted small">&mdash;</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status == 'Confirmed' %}
+              <span class="custom-badge badge-confirmed">Confirmed</span>
+            {% elif a.status == 'Checked In' %}
+              <span class="custom-badge badge-checkedin">Checked In</span>
+            {% elif a.status == 'Completed' %}
+              <span class="custom-badge badge-completed">Completed</span>
+            {% elif a.status == 'Cancelled' %}
+              <span class="custom-badge badge-cancelled">Cancelled</span>
+            {% else %}
+              <span class="custom-badge badge-pending">{{ a.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 align-items-center">
+              <a href="{{ url_for('appointments.detail', appointment_id=a.id) }}" class="btn btn-sm btn-light border" title="View Details">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if current_user.role in ['admin', 'doctor'] and a.status == 'Confirmed' %}
+              <form method="POST" action="{{ url_for('queue.checkin', appointment_id=a.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-teal-custom py-1 px-2" title="Check-in Patient">
+                  <i class="bi bi-box-arrow-in-right"></i> Check In
+                </button>
+              </form>
+              {% endif %}
+              {% if a.status != 'Cancelled' and a.status != 'Completed' %}
+              <form method="POST" action="{{ url_for('appointments.cancel', appointment_id=a.id) }}" class="d-inline">
+                <button type="submit" class="btn-danger-custom confirm-action py-1 px-2" data-confirm="Are you sure you want to cancel appointment {{ a.appointment_code }}?" title="Cancel Appointment">
+                  Cancel
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-calendar2-x fs-1 text-light d-block mb-2"></i>
+      No appointments found matching your criteria.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

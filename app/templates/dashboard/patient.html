@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Portal — CareSync Hospital{% endblock %}
+{% block page_header %}My Health Portal{% endblock %}
+
+{% block content %}
+<!-- Welcome Patient Banner -->
+<div class="content-card p-4 mb-4" style="background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border-color: #bbf7d0;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div>
+      <h3 class="fw-bold mb-1">Hello, {{ current_user.full_name }}! 👋</h3>
+      <p class="text-muted small mb-0">Welcome to your CareSync healthcare dashboard. Schedule consultations, track waiting tokens, and view past medical visits.</p>
+    </div>
+    <a href="{{ url_for('appointments.book') }}" class="btn-primary-custom py-2 px-3" id="btn-patient-book-now">
+      <i class="bi bi-calendar-plus-fill"></i>
+      <span>Book New Appointment</span>
+    </a>
+  </div>
+</div>
+
+<!-- Patient Summary Metrics -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Total Bookings</div>
+      <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-icon icon-blue"><i class="bi bi-journal-medical"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Upcoming Visits</div>
+      <div class="stat-value text-primary">{{ stats.upcoming }}</div>
+    </div>
+    <div class="stat-icon icon-teal"><i class="bi bi-calendar-event"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info">
+      <div class="stat-label">Completed Consults</div>
+      <div class="stat-value text-success">{{ stats.completed }}</div>
+    </div>
+    <div class="stat-icon icon-green"><i class="bi bi-patch-check"></i></div>
+  </div>
+</div>
+
+<!-- Upcoming Consultations Card -->
+<div class="content-card">
+  <div class="card-header-flex">
+    <h3><i class="bi bi-calendar2-heart text-primary"></i> My Upcoming Appointments</h3>
+    <a href="{{ url_for('appointments.book') }}" class="btn btn-sm btn-outline-primary">+ Book Another</a>
+  </div>
+  <div class="table-responsive">
+    {% if upcoming_appointments %}
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Reference Code</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Doctor & Specialty</th>
+          <th>Queue Token</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in upcoming_appointments %}
+        <tr>
+          <td class="fw-bold text-primary">{{ a.appointment_code }}</td>
+          <td><i class="bi bi-calendar me-1 text-muted"></i>{{ a.appointment_date }}</td>
+          <td><span class="badge bg-light text-dark border">{{ a.time_slot }}</span></td>
+          <td>
+            <div class="fw-semibold">{{ a.doctor_name }}</div>
+            <small class="text-muted">{{ a.doctor_specialty }} ({{ a.doctor_code }})</small>
+          </td>
+          <td>
+            {% if a.queue_number %}
+              <span class="badge bg-primary fs-6">#{{ a.queue_number }}</span>
+              <small class="d-block text-muted" style="font-size: 0.7rem;">Checked In</small>
+            {% else %}
+              <span class="text-muted small">Generated upon check-in</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.status == 'Confirmed' %}
+              <span class="custom-badge badge-confirmed">Confirmed</span>
+            {% elif a.status == 'Checked In' %}
+              <span class="custom-badge badge-checkedin">Checked In</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('appointments.detail', appointment_id=a.id) }}" class="btn btn-sm btn-light border">Details</a>
+              {% if a.status != 'Cancelled' and a.status != 'Completed' %}
+              <form method="POST" action="{{ url_for('appointments.cancel', appointment_id=a.id) }}">
+                <button type="submit" class="btn-danger-custom confirm-action" data-confirm="Are you sure you want to cancel appointment {{ a.appointment_code }}?">
+                  Cancel
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-calendar-check fs-1 text-light d-block mb-2"></i>
+      You have no upcoming appointments.
+      <div class="mt-3">
+        <a href="{{ url_for('appointments.book') }}" class="btn-primary-custom">Book an Appointment</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Past Consultation History -->
+<div class="content-card">
+  <div class="card-header-flex">
+    <h3><i class="bi bi-clock-history text-secondary"></i> Past Consultation History</h3>
+  </div>
+  <div class="table-responsive">
+    {% if past_appointments %}
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Date</th>
+          <th>Doctor</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in past_appointments %}
+        <tr>
+          <td class="fw-bold">{{ a.appointment_code }}</td>
+          <td>{{ a.appointment_date }} ({{ a.time_slot }})</td>
+          <td>{{ a.doctor_name }} ({{ a.doctor_specialty }})</td>
+          <td>{{ a.reason }}</td>
+          <td>
+            {% if a.status == 'Completed' %}
+              <span class="custom-badge badge-completed">Completed</span>
+            {% elif a.status == 'Cancelled' %}
+              <span class="custom-badge badge-cancelled">Cancelled</span>
+            {% else %}
+              <span class="custom-badge badge-pending">{{ a.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('appointments.detail', appointment_id=a.id) }}" class="btn btn-sm btn-light border">View Record</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-4 text-muted small">No past appointments recorded.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
