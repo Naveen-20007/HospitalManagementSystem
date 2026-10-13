@@ -1,6 +1,7 @@
 pipeline {
     agent {
         node {
+            label 'built-in'
             customWorkspace 'c:\\Users\\lenovo\\OneDrive\\Desktop\\Devops cat2'
         }
     }
@@ -10,239 +11,186 @@ pipeline {
         IMAGE_NAME   = 'caresync-app'
         IMAGE_TAG    = "${BUILD_NUMBER}"
         REPORTS_DIR  = 'reports'
-        PORT         = '5000'
-        PATH         = "C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313;C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313\\Scripts;C:\\Program Files\\Git\\cmd;C:\\Users\\lenovo\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;${env.PATH}"
+        HOST_PORT    = '8081'
+        HEALTH_URL   = 'http://localhost:8081/health'
+        APP_URL      = 'http://localhost:8081/'
+        PATH         = "C:\\Users\\lenovo\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313;C:\\Users\\lenovo\\AppData\\Local\\Programs\\Python\\Python313\\Scripts;C:\\Program Files\\Git\\cmd;C:\\Program Files\\Java\\jdk-21\\bin;${env.PATH}"
     }
 
     options {
-        timeout(time: 20, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 25, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '15'))
         timestamps()
     }
 
     stages {
         // ====================================================================
-        // STAGE 1: Source Code Checkout
+        // STAGE 1: Source Code Checkout & VCS Information
         // ====================================================================
         stage('1. Checkout') {
             steps {
-                echo "=================================================="
+                echo "=========================================================="
                 echo "[CareSync CI/CD] Stage 1: Checkout Source Code"
-                echo "=================================================="
+                echo "=========================================================="
                 script {
                     try {
                         checkout scm
                     } catch (Exception e) {
-                        echo "Running directly in workspace repository: ${e.message}"
+                        echo "Operating in local workspace: ${e.message}"
                     }
-                    if (isUnix()) {
-                        sh 'git log -1 --oneline || true'
-                    } else {
-                        bat 'git log -1 --oneline'
-                    }
-                    echo "Branch: ${env.GIT_BRANCH ?: 'main'}"
-                    echo "Commit: ${env.GIT_COMMIT ?: 'HEAD'}"
+                    bat 'git log -1 --oneline || ver'
+                    echo "Build Number : ${BUILD_NUMBER}"
+                    echo "Branch       : ${env.GIT_BRANCH ?: 'main'}"
                 }
             }
         }
 
         // ====================================================================
-        // STAGE 2: Environment Verification
+        // STAGE 2: Validate Project Structure & Syntax
         // ====================================================================
-        stage('2. Environment Verification') {
+        stage('2. Validate Structure') {
             steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 2: Verifying Environment"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh 'python3 --version || python --version'
-                        sh 'git --version'
-                        sh 'docker --version || echo "Docker daemon not available in this node; will use local deployment mode."'
-                    } else {
-                        bat 'python --version'
-                        bat 'git --version'
-                        bat 'docker --version || echo Docker daemon not detected on Windows path.'
-                    }
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 2: Validating Project Structure"
+                echo "=========================================================="
+                bat '''
+                    @echo on
+                    echo Checking core project components...
+                    if not exist "app" ( echo Missing app directory & exit /b 1 )
+                    if not exist "tests" ( echo Missing tests directory & exit /b 1 )
+                    if not exist "Dockerfile" ( echo Missing Dockerfile & exit /b 1 )
+                    if not exist "compose.yaml" ( echo Missing compose.yaml & exit /b 1 )
+                    if not exist "requirements.txt" ( echo Missing requirements.txt & exit /b 1 )
+                    echo Project directory structure verified.
+                    
+                    echo Checking Python syntax compilation...
+                    python -m py_compile app.py app/__init__.py app/models.py app/db.py
+                    echo Syntax validation successful.
+                '''
+            }
+        }
+
+        // ====================================================================
+        // STAGE 3: Python Virtual Environment & Dependencies
+        // ====================================================================
+        stage('3. Prepare Dependencies') {
+            steps {
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 3: Preparing Python Dependencies"
+                echo "=========================================================="
+                bat '''
+                    @echo on
+                    if not exist ".venv" (
+                        echo Creating virtual environment...
+                        python -m venv .venv
+                    )
+                    call .venv\\Scripts\\activate.bat
+                    pip install --no-warn-script-location -r requirements.txt
+                    python --version
+                    pytest --version
+                '''
+            }
+        }
+
+        // ====================================================================
+        // STAGE 4: Automated Testing Suite (Pytest)
+        // ====================================================================
+        stage('4. Run Automated Tests') {
+            steps {
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 4: Executing Pytest Test Suite"
+                echo "=========================================================="
+                bat '''
+                    @echo on
+                    call .venv\\Scripts\\activate.bat
+                    if not exist "reports" ( mkdir reports )
+                    python -m pytest -v --junitxml=reports/junit.xml
+                '''
+            }
+            post {
+                always {
+                    echo "=========================================================="
+                    echo "[CareSync CI/CD] Publishing JUnit XML Test Results"
+                    echo "=========================================================="
+                    junit allowEmptyResults: true, testResults: 'reports/junit.xml'
                 }
             }
         }
 
         // ====================================================================
-        // STAGE 3: Dependency Installation
+        // STAGE 5: Docker Container Image Build
         // ====================================================================
-        stage('3. Dependency Installation') {
+        stage('5. Build Docker Image') {
             steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 3: Installing Dependencies"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            python3 -m venv .venv
-                            . .venv/bin/activate
-                            pip install --upgrade pip
-                            pip install -r requirements.txt
-                        '''
-                    } else {
-                        bat '''
-                            if not exist ".venv" ( python -m venv .venv )
-                            call .venv\\Scripts\\activate.bat
-                            pip install -r requirements.txt
-                        '''
-                    }
-                }
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 5: Building Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "=========================================================="
+                bat """
+                    @echo on
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest .
+                    docker images | findstr ${IMAGE_NAME}
+                """
             }
         }
 
         // ====================================================================
-        // STAGE 4: Application Validation & Syntax Check
+        // STAGE 6: Automated Deployment via Docker Compose
         // ====================================================================
-        stage('4. Application Validation') {
+        stage('6. Deploy via Docker Compose') {
             steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 4: Code Validation"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            . .venv/bin/activate
-                            python -m py_compile app.py app/__init__.py app/models.py app/db.py
-                        '''
-                    } else {
-                        bat '''
-                            call .venv\\Scripts\\activate.bat
-                            python -m py_compile app.py app/__init__.py app/models.py app/db.py
-                        '''
-                    }
-                }
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 6: Deploying Application Stack"
+                echo "=========================================================="
+                bat '''
+                    @echo on
+                    docker compose down --remove-orphans || ver
+                    docker compose up -d
+                    docker compose ps
+                '''
             }
         }
 
         // ====================================================================
-        // STAGE 5: Automated Testing with Pytest
+        // STAGE 7: Live Health & Readiness Verification
         // ====================================================================
-        stage('5. Automated Tests') {
+        stage('7. Health Verification') {
             steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 5: Executing Pytest Suite"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            . .venv/bin/activate
-                            mkdir -p reports
-                            pytest -v --junitxml=reports/junit.xml
-                        '''
-                    } else {
-                        bat '''
-                            call .venv\\Scripts\\activate.bat
-                            if not exist "reports" ( mkdir reports )
-                            python -m pytest -v --junitxml=reports/junit.xml
-                        '''
-                    }
-                }
-            }
-        }
-
-        // ====================================================================
-        // STAGE 6: Test Report Publication (JUnit XML)
-        // ====================================================================
-        stage('6. Test Report Publication') {
-            steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 6: Publishing JUnit XML"
-                echo "=================================================="
-                junit allowEmptyResults: false, testResults: 'reports/junit.xml'
-            }
-        }
-
-        // ====================================================================
-        // STAGE 7: Docker Image Build
-        // ====================================================================
-        stage('7. Docker Image Build') {
-            when {
-                expression {
-                    return isUnix() ? (sh(returnStatus: true, script: 'which docker') == 0) : (bat(returnStatus: true, script: 'where docker') == 0)
-                }
-            }
-            steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 7: Building Docker Image"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    } else {
-                        bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest . || echo Docker build step completed (daemon not active, skipping image write)"
-                    }
-                }
-            }
-        }
-
-        // ====================================================================
-        // STAGE 8: Automated Deployment
-        // ====================================================================
-        stage('8. Deployment') {
-            when {
-                expression {
-                    return (env.GIT_BRANCH == null || env.GIT_BRANCH == '' || env.GIT_BRANCH == 'local' || env.GIT_BRANCH.contains('main') || env.GIT_BRANCH.contains('develop'))
-                }
-            }
-            steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 8: Deploying Application"
-                echo "=================================================="
-                script {
-                    echo "Deploying CareSync version ${IMAGE_TAG} to environment..."
-                    // In containerized environment: docker compose up -d
-                    // In direct host environment: verified start
-                }
-            }
-        }
-
-        // ====================================================================
-        // STAGE 9: Health Verification
-        // ====================================================================
-        stage('9. Health Verification') {
-            steps {
-                echo "=================================================="
-                echo "[CareSync CI/CD] Stage 9: Deployment Health Check"
-                echo "=================================================="
-                script {
-                    if (isUnix()) {
-                        sh '''
-                            . .venv/bin/activate
-                            python -c "from app import create_app; a = create_app(); c = a.test_client(); r = c.get('/health'); assert r.status_code == 200, 'Healthcheck failed'"
-                            python -c "from app import create_app; a = create_app(); c = a.test_client(); r = c.get('/health/ready'); assert r.status_code == 200, 'Readiness failed'"
-                        '''
-                    } else {
-                        bat '''
-                            call .venv\\Scripts\\activate.bat
-                            python -c "from app import create_app; a = create_app(); c = a.test_client(); r = c.get('/health'); assert r.status_code == 200, 'Healthcheck failed'"
-                            python -c "from app import create_app; a = create_app(); c = a.test_client(); r = c.get('/health/ready'); assert r.status_code == 200, 'Readiness failed'"
-                        '''
-                    }
-                    echo "[CareSync CI/CD] Application is healthy and ready to serve traffic!"
-                }
+                echo "=========================================================="
+                echo "[CareSync CI/CD] Stage 7: Verifying Live Application Health"
+                echo "=========================================================="
+                bat '''
+                    @echo on
+                    echo Waiting for containers to become healthy and verifying live endpoints...
+                    python scripts/verify_health.py http://localhost:8081
+                '''
             }
         }
     }
 
     // ========================================================================
-    // Pipeline Post Actions: Cleanup & Notifications
+    // Post-Build Pipeline Notifications & Artifact Archiving
     // ========================================================================
     post {
         always {
-            echo "=================================================="
-            echo "[CareSync CI/CD] Pipeline completed for build #${BUILD_NUMBER}"
-            echo "=================================================="
+            archiveArtifacts artifacts: 'reports/**/*.xml', allowEmptyArchive: true
+            echo "=========================================================="
+            echo "[CareSync CI/CD] Pipeline run finished for build #${BUILD_NUMBER}"
+            echo "=========================================================="
         }
         success {
-            echo "STATUS: SUCCESS — All tests passed, build published, health verified!"
+            echo "=========================================================="
+            echo "PIPELINE RESULT: SUCCESS"
+            echo "CareSync Hospital System deployed and verified successfully!"
+            echo "Access application at: http://localhost:8081"
+            echo "Health status at      : http://localhost:8081/health"
+            echo "=========================================================="
         }
         failure {
-            echo "STATUS: FAILED — Pipeline stopped due to failure. Deployment aborted."
+            echo "=========================================================="
+            echo "PIPELINE RESULT: FAILED"
+            echo "Capturing diagnostic container logs..."
+            echo "=========================================================="
+            bat 'docker compose logs --tail 50 || ver'
         }
     }
 }

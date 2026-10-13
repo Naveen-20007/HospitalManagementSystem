@@ -34,7 +34,8 @@ COPY app.py .
 COPY docker/docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Grant execution permissions and assign directory ownership
-RUN chmod +x /app/docker-entrypoint.sh && \
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh && \
     chown -R caresync:caresync /app
 
 # Switch to non-root user
@@ -49,4 +50,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # Define entrypoint and default start command using Gunicorn WSGI
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "app:create_app()"]
