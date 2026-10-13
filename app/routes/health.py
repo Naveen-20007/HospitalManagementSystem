@@ -45,6 +45,7 @@ def readiness():
 
 
 @health_bp.route('/metrics', methods=['GET'])
+@health_bp.route('/health/metrics', methods=['GET'])
 def metrics():
     """Basic operational metrics for deployment verification and monitoring."""
     uptime_seconds = int(time.time() - START_TIME)

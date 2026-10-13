@@ -96,10 +96,13 @@ CREATE INDEX IF NOT EXISTS idx_activity_time ON activity_logs(timestamp DESC);
 
 
 def get_db_path():
-    """Retrieve active database path from Flask config or default."""
-    if current_app:
-        return current_app.config.get('DATABASE', DEFAULT_DB_PATH)
-    return DEFAULT_DB_PATH
+    """Retrieve active database path from Flask config, environment, or default."""
+    try:
+        if current_app:
+            return current_app.config.get('DATABASE', os.environ.get('DATABASE_PATH', DEFAULT_DB_PATH))
+    except RuntimeError:
+        pass
+    return os.environ.get('DATABASE_PATH', DEFAULT_DB_PATH)
 
 
 def get_db(db_path=None):
