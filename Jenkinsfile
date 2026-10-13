@@ -39,6 +39,7 @@ pipeline {
                 script {
                     try {
                         checkout scm
+                        bat 'git checkout main || ver'
                     } catch (Exception e) {
                         echo "Operating in local workspace: ${e.message}"
                     }
