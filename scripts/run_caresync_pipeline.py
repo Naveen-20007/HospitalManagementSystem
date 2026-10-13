@@ -141,5 +141,15 @@ if __name__ == "__main__":
     create_or_update_job(job_name, pipeline_xml)
     success, bnum = trigger_and_watch(job_name)
     print(f"\n[FINAL STATUS] Job: {job_name}, Build: #{bnum}, Success: {success}")
+    if success:
+        import webbrowser
+        print("\n=======================================================")
+        print(" AUTOMATICALLY OPENING CARESYNC IN DEFAULT BROWSER ")
+        print(" Website URL: http://localhost:8081 ")
+        print("=======================================================")
+        try:
+            webbrowser.open("http://localhost:8081")
+        except Exception as e:
+            print(f"Could not open browser automatically: {e}")
     if not success:
         sys.exit(1)

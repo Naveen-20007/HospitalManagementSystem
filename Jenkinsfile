@@ -23,6 +23,10 @@ pipeline {
         timestamps()
     }
 
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
     stages {
         // ====================================================================
         // STAGE 1: Source Code Checkout & VCS Information
@@ -162,6 +166,8 @@ pipeline {
                     @echo on
                     echo Waiting for containers to become healthy and verifying live endpoints...
                     python scripts/verify_health.py http://localhost:8081
+                    echo Automatically launching CareSync website in browser...
+                    powershell -NoProfile -Command "Start-Process 'http://localhost:8081'" || ver
                 '''
             }
         }
